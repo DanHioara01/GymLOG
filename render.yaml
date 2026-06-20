@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: kinetic-ai-trainer
+    runtime: docker
+    dockerfilePath: ./ai_server/Dockerfile
+    envVars:
+      - key: PROVIDER
+        value: groq
+      - key: GROQ_API_KEY
+        sync: false
+      - key: MODEL
+        value: llama-3.3-70b-versatile
+
+  - type: web
+    name: kinetic-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    envVars:
+      - key: PORT
+        value: 4242

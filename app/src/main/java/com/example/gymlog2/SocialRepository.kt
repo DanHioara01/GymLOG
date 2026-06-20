@@ -1,6 +1,7 @@
 package com.example.gymlog2
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
 class SocialRepository(private val db: AppDatabase) {
@@ -117,9 +118,19 @@ class SocialRepository(private val db: AppDatabase) {
     suspend fun syncUserProfile(userId: String, name: String, photoUri: String = "") {
         withContext(Dispatchers.IO) {
             try {
-                api.upsertUser(mapOf("id" to userId, "name" to name, "photoUri" to photoUri))
+                val token = com.google.firebase.messaging.FirebaseMessaging.getInstance().token.await()
+                api.upsertUser(mapOf("id" to userId, "name" to name, "photoUri" to photoUri, "fcmToken" to (token ?: "")))
             } catch (e: Exception) { e.printStackTrace() }
         }
+    }
+
+    fun syncUserProfileBlocking(userId: String, name: String, photoUri: String = "") {
+        try {
+            kotlinx.coroutines.runBlocking {
+                val token = com.google.firebase.messaging.FirebaseMessaging.getInstance().token.await()
+                api.upsertUser(mapOf("id" to userId, "name" to name, "photoUri" to photoUri, "fcmToken" to (token ?: "")))
+            }
+        } catch (e: Exception) { e.printStackTrace() }
     }
 
     suspend fun syncVolumeToFirestore(userId: String, totalVolume: Double, workoutCount: Int) {

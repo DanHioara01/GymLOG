@@ -11,13 +11,22 @@ app.use(cors());
 app.use(express.json());
 
 try {
-  const serviceAccount = require('./serviceAccountKey.json');
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
-  console.log('Firebase Admin initialized');
+  const serviceAccountEnv = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (serviceAccountEnv) {
+    const serviceAccount = JSON.parse(serviceAccountEnv);
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+    console.log('Firebase Admin initialized from env');
+  } else {
+    const serviceAccount = require('./serviceAccountKey.json');
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+    console.log('Firebase Admin initialized from file');
+  }
 } catch (e) {
-  console.log('No serviceAccountKey.json found - push notifications disabled');
+  console.log('Firebase Admin not initialized - push notifications disabled:', e.message);
 }
 
 const db = new Database(path.join(__dirname, 'kinetic.db'));

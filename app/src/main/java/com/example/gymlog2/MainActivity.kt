@@ -448,6 +448,9 @@ fun MuscleGroupList(onThemeChanged: (ThemeMode) -> Unit = {}) {
                             userId = userId
                         )
                         isLoggedIn = true
+                        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                            try { SocialRepository(AppDatabase.getDatabase(context)).syncUserProfile(userId, firebaseUser.displayName ?: "Google User", firebaseUser.photoUrl?.toString() ?: "") } catch (_: Exception) {}
+                        }
                     }.onFailure {
                         googleSignInError = it.message
                     }
@@ -510,6 +513,9 @@ fun MuscleGroupList(onThemeChanged: (ThemeMode) -> Unit = {}) {
                     userId = userId
                 )
                 isLoggedIn = true
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                    try { SocialRepository(AppDatabase.getDatabase(context)).syncUserProfile(userId, email.substringBefore("@"), "") } catch (_: Exception) {}
+                }
             },
             onGoogleLogin = {
                 googleSignInError = null
@@ -551,6 +557,9 @@ fun MuscleGroupList(onThemeChanged: (ThemeMode) -> Unit = {}) {
                     userId = userId
                 )
                 isLoggedIn = true
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                    try { SocialRepository(AppDatabase.getDatabase(context)).syncUserProfile(userId, "Facebook User", "") } catch (_: Exception) {}
+                }
             },
             onGuestLogin = {
                 val db = AppDatabase.getDatabase(context)
@@ -582,6 +591,9 @@ fun MuscleGroupList(onThemeChanged: (ThemeMode) -> Unit = {}) {
                     userId = userId
                 )
                 isLoggedIn = true
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                    try { SocialRepository(AppDatabase.getDatabase(context)).syncUserProfile(userId, "Guest", "") } catch (_: Exception) {}
+                }
             }
         )
 
@@ -603,13 +615,17 @@ fun MuscleGroupList(onThemeChanged: (ThemeMode) -> Unit = {}) {
             ProfileSetupScreen(
                 strings = strings,
                 onSave = { name, photoUri ->
+                    val uid = userProfileManager.getOwnUserId()
                     userProfileManager.createOrUpdateProfile(
                         name = name,
                         photoUri = photoUri,
-                        userId = userProfileManager.getOwnUserId()
+                        userId = uid
                     )
                     preferencesManager.setOnboardingComplete(true)
                     showProfileSetup = false
+                    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                        try { SocialRepository(AppDatabase.getDatabase(context)).syncUserProfile(uid, name, photoUri) } catch (_: Exception) {}
+                    }
                 }
             )
         }

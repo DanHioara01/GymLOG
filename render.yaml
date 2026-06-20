@@ -14,7 +14,7 @@ services:
   - type: web
     name: kinetic-backend
     runtime: docker
-    dockerfilePath: ./backend/Dockerfile
+    dockerfilePath: ./Dockerfile.backend
     envVars:
       - key: PORT
         value: 4242

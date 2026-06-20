@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Kinetic</string>
+    <string name="facebook_app_id">YOUR_FACEBOOK_APP_ID</string>
+    <string name="fb_login_protocol_scheme">fbYOUR_FACEBOOK_APP_ID</string>
+    <string name="facebook_client_token">YOUR_FACEBOOK_CLIENT_TOKEN</string>
+    <string name="default_web_client_id">580154418325-8a0fc9d2icragaf7da62oqdvtk2hjiis.apps.googleusercontent.com</string>
+</resources>

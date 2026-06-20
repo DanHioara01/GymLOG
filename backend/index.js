@@ -155,6 +155,11 @@ app.get('/users/:id', (req, res) => {
   res.json(user);
 });
 
+app.delete('/users/:id', (req, res) => {
+  db.prepare('DELETE FROM users WHERE id = ?').run(req.params.id);
+  res.json({ success: true });
+});
+
 // =============================================
 // FRIENDSHIPS
 // =============================================

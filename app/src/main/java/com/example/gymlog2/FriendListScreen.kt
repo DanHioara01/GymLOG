@@ -55,6 +55,10 @@ fun FriendListScreen(onBackClick: () -> Unit) {
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
+        val profile = userProfileManager.getOwnProfile()
+        if (profile != null && profile.name.isNotBlank()) {
+            socialRepository.syncUserProfile(currentUserId, profile.name, profile.photoUri)
+        }
         friends = socialRepository.getFriends(currentUserId)
         incomingRequests = socialRepository.getIncomingRequests(currentUserId)
         val allUserIds = (friends.map { it.friendId } + incomingRequests.map { it.userId }).distinct()

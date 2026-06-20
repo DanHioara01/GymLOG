@@ -62,6 +62,10 @@ fun FriendsScreen(
     var requestSentMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
+        val profile = userProfileManager.getOwnProfile()
+        if (profile != null && profile.name.isNotBlank()) {
+            socialRepository.syncUserProfile(currentUserId, profile.name, profile.photoUri)
+        }
         friends = socialRepository.getFriends(currentUserId)
         incomingRequests = socialRepository.getIncomingRequests(currentUserId)
         friends.forEach { f ->

@@ -84,7 +84,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val themeMode = remember { mutableStateOf(preferencesManager.getThemeMode()) }
-            var showWelcome by remember { mutableStateOf(true) }
+            var showWelcome by remember { mutableStateOf(preferencesManager.isLoggedIn()) }
             val context = androidx.compose.ui.platform.LocalContext.current
             val strings = LanguageManager.getStrings(context)
             val userName = remember {

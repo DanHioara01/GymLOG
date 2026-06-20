@@ -3,6 +3,8 @@ package com.example.gymlog2
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.*
+import okhttp3.OkHttpClient
+import java.util.concurrent.TimeUnit
 
 interface GymLOGApi {
     // Users
@@ -99,9 +101,15 @@ data class StreakResponse(
 )
 
 object NetworkClient {
-    private const val DEFAULT_URL = "http://192.168.100.5:4242/"
+    private const val DEFAULT_URL = "https://kinetic-backend-3ff6.onrender.com"
     private var currentUrl: String = DEFAULT_URL
     private var currentApi: GymLOGApi? = null
+
+    private val httpClient = OkHttpClient.Builder()
+        .connectTimeout(60, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(60, TimeUnit.SECONDS)
+        .build()
 
     fun getApi(serverUrl: String? = null): GymLOGApi {
         val url = (serverUrl?.takeIf { it.isNotBlank() } ?: currentUrl).trimEnd('/') + "/"
@@ -109,6 +117,7 @@ object NetworkClient {
         currentUrl = url
         currentApi = Retrofit.Builder()
             .baseUrl(url)
+            .client(httpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(GymLOGApi::class.java)

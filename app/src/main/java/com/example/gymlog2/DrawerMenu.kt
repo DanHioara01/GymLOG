@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.gymlog2.ui.theme.*
 
-enum class DrawerPage { RECOVERY, CALENDAR, FOOD_JOURNAL, AI_TRAINER, FRIENDS, SERVER_SETTINGS }
+enum class DrawerPage { RECOVERY, CALENDAR, FOOD_JOURNAL, AI_TRAINER, FRIENDS }
 
 data class LanguageOption(
     val code: String,

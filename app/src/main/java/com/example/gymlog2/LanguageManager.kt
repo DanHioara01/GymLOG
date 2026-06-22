@@ -407,6 +407,26 @@ object LanguageManager {
         val aiSuggestion2: String = m["aiSuggestion2"] ?: ""
         val aiSuggestion3: String = m["aiSuggestion3"] ?: ""
         val aiSuggestion4: String = m["aiSuggestion4"] ?: ""
+        val activitySummary: String = m["activitySummary"] ?: "Activity"
+        val stepsLabel: String = m["stepsLabel"] ?: "Steps"
+        val activeTimeLabel: String = m["activeTimeLabel"] ?: "Active time"
+        val activityCaloriesLabel: String = m["activityCaloriesLabel"] ?: "Activity calories"
+        val totalBurnedCalories: String = m["totalBurnedCalories"] ?: "Total burned calories"
+        val distanceWhileActive: String = m["distanceWhileActive"] ?: "Distance while active"
+        val cal: String = m["cal"] ?: "Cal"
+        val mins: String = m["mins"] ?: "mins"
+        val km: String = m["km"] ?: "km"
+        val startCardio: String = m["startCardio"] ?: "Start Cardio"
+        val stopCardio: String = m["stopCardio"] ?: "Stop Cardio"
+        val cardioSession: String = m["cardioSession"] ?: "Cardio Session"
+        val cardioMap: String = m["cardioMap"] ?: "GPS Cardio Map"
+        val cardioHistory: String = m["cardioHistory"] ?: "Cardio History"
+        val noCardioSessions: String = m["noCardioSessions"] ?: "No cardio sessions yet"
+        val pace: String = m["pace"] ?: "Pace"
+        val duration: String = m["duration"] ?: "Duration"
+        val avgHeartRate: String = m["avgHeartRate"] ?: "Avg HR"
+        val gpsTracking: String = m["gpsTracking"] ?: "GPS Tracking"
+        val locationPermissionRequired: String = m["locationPermissionRequired"] ?: "Location permission is required for GPS tracking"
     }
 
     private val strings = mapOf(
@@ -490,6 +510,7 @@ object LanguageManager {
             "biometricTracking" to "Monitorizare biometrica", "biometricSubtitle" to "Greutate, circumferinte, grasime corporala", "addMeasurement" to "Adauga masuratoare", "bodyFat" to "Grasime corporala", "waistCirc" to "Talie", "hipsCirc" to "Solduri", "thighsCirc" to "Coapse", "chestCirc" to "Piept", "armsCirc" to "Brate", "lastMeasurement" to "Ultima masuratoare", "noMeasurements" to "Nicio masuratoare inca", "viewCharts" to "Vezi grafice", "saveMeasurement" to "Salveaza masuratoarea", "measurementSaved" to "Masuratoarea salvata", "weeksAgo" to "saptamani in urma", "cm" to "cm", "percent" to "%", "deleteMeasurement" to "Sterge masuratoarea", "biometricHistory" to "Istoric masuratori", "weightChart" to "Grafic greutate", "bodyFatChart" to "Grafic grasime corporala", "circumferenceChart" to "Grafic circumferinte", "date" to "Data", "biometricReminder" to "Reamintire biometrica", "biometricReminderTitle" to "Timpul pentru masuratori!", "biometricReminderText" to "Nu uita sa iti inregistrezi masuratorile corporale saptamanale.", "biometricReminderEnabled" to "Activat", "biometricReminderDisabled" to "Dezactivat",
             "foodJournal" to "Jurnal alimentar", "scanBarcode" to "Scaneaza cod de bare", "scanBarcodeHint" to "Plaseaza codul de bare in cadru pentru a scana produsul", "cameraPermissionRequired" to "Permisiunea camerei este necesara pentru scanare", "scan" to "Scaneaza", "scanning" to "Se scaneaza...", "scanBarcodeHelp" to "Asigura-te ca Google Play Services este instalat si updatat", "noFoodEntries" to "Nicio intrare alimentara inca", "todaysMacros" to "Macronutrientii de azi", "caloriesLabel" to "Calorii", "proteinLabel" to "Proteine", "carbsLabel" to "Carbo", "fatLabel" to "Grasimi", "breakfast" to "Mic dejun", "lunch" to "Pranz", "dinner" to "Cina", "snack" to "Gustare", "selectMealType" to "Selecteaza tipul mesei", "manualFoodEntry" to "Intrare manuala", "foodName" to "Nume aliment", "brandLabel" to "Marca", "calories" to "Calorii", "protein" to "Proteine", "carbs" to "Carbohidrati", "fat" to "Grasimi", "fiber" to "Fibre",
             "aiTrainer" to "Antrenor AI", "aiTrainerWelcome" to "Salut! Sunt antrenorul tau AI", "aiTrainerHint" to "Intreaba-ma orice despre antrenamente, nutritie sau progres", "askAiTrainer" to "Intreaba antrenorul...", "aiSuggestion1" to "Ce antrenament imi recomanzi azi?", "aiSuggestion2" to "Cum pot sa sporesc volumul?", "aiSuggestion3" to "Am nevoie de o zi de odihna?", "aiSuggestion4" to "Cum sa ies din platou?",
+            "activitySummary" to "Activitate", "stepsLabel" to "Pasi", "activeTimeLabel" to "Timp activ", "activityCaloriesLabel" to "Calorii activitate", "totalBurnedCalories" to "Total calorii arse", "distanceWhileActive" to "Distanta parcursa", "cal" to "Cal", "mins" to "min", "km" to "km", "startCardio" to "Incepe Cardio", "stopCardio" to "Opreste Cardio", "cardioSession" to "Sesiune Cardio", "cardioMap" to "Harta GPS Cardio", "cardioHistory" to "Istoric Cardio", "noCardioSessions" to "Nicio sesiune cardio inca", "pace" to "Ritm", "duration" to "Durata", "avgHeartRate" to "Puls mediu", "gpsTracking" to "Urmarire GPS", "locationPermissionRequired" to "Permisiunea de locatie este necesara pentru urmarire GPS",
             "viewProfile" to "Vezi profilul",
             "accountSettings" to "Setari cont", "deleteAccount" to "Sterge contul",
             "privacyPolicy" to "Politica de confidentialitate",
@@ -595,6 +616,7 @@ object LanguageManager {
             "biometricTracking" to "Biometric Tracking", "biometricSubtitle" to "Weight, circumferences, body fat", "addMeasurement" to "Add measurement", "bodyFat" to "Body fat", "waistCirc" to "Waist", "hipsCirc" to "Hips", "thighsCirc" to "Thighs", "chestCirc" to "Chest", "armsCirc" to "Arms", "lastMeasurement" to "Last measurement", "noMeasurements" to "No measurements yet", "viewCharts" to "View charts", "saveMeasurement" to "Save measurement", "measurementSaved" to "Measurement saved", "weeksAgo" to "weeks ago", "cm" to "cm", "percent" to "%", "deleteMeasurement" to "Delete measurement", "biometricHistory" to "Measurement history", "weightChart" to "Weight chart", "bodyFatChart" to "Body fat chart", "circumferenceChart" to "Circumference chart", "date" to "Date", "biometricReminder" to "Biometric Reminder", "biometricReminderTitle" to "Time for measurements!", "biometricReminderText" to "Don't forget to log your weekly body measurements.", "biometricReminderEnabled" to "Enabled", "biometricReminderDisabled" to "Disabled",
             "foodJournal" to "Food Journal", "scanBarcode" to "Scan Barcode", "scanBarcodeHint" to "Place the barcode in frame to scan the product", "cameraPermissionRequired" to "Camera permission is required for scanning", "scan" to "Scan", "scanning" to "Scanning...", "scanBarcodeHelp" to "Make sure Google Play Services is installed and updated", "noFoodEntries" to "No food entries yet", "todaysMacros" to "Today's Macros", "caloriesLabel" to "Calories", "proteinLabel" to "Protein", "carbsLabel" to "Carbs", "fatLabel" to "Fat", "breakfast" to "Breakfast", "lunch" to "Lunch", "dinner" to "Dinner", "snack" to "Snack", "selectMealType" to "Select meal type", "manualFoodEntry" to "Manual Entry", "foodName" to "Food name", "brandLabel" to "Brand", "calories" to "Calories", "protein" to "Protein", "carbs" to "Carbs", "fat" to "Fat", "fiber" to "Fiber",
             "aiTrainer" to "AI Trainer", "aiTrainerWelcome" to "Hi! I'm your AI trainer", "aiTrainerHint" to "Ask me anything about workouts, nutrition or progress", "askAiTrainer" to "Ask the trainer...", "aiSuggestion1" to "What workout do you recommend today?", "aiSuggestion2" to "How can I increase volume?", "aiSuggestion3" to "Do I need a rest day?", "aiSuggestion4" to "How do I break through a plateau?",
+            "activitySummary" to "Activity", "stepsLabel" to "Steps", "activeTimeLabel" to "Active time", "activityCaloriesLabel" to "Activity calories", "totalBurnedCalories" to "Total burned calories", "distanceWhileActive" to "Distance while active", "cal" to "Cal", "mins" to "mins", "km" to "km", "startCardio" to "Start Cardio", "stopCardio" to "Stop Cardio", "cardioSession" to "Cardio Session", "cardioMap" to "GPS Cardio Map", "cardioHistory" to "Cardio History", "noCardioSessions" to "No cardio sessions yet", "pace" to "Pace", "duration" to "Duration", "avgHeartRate" to "Avg HR", "gpsTracking" to "GPS Tracking", "locationPermissionRequired" to "Location permission is required for GPS tracking",
             "viewProfile" to "View Profile",
             "accountSettings" to "Account Settings", "deleteAccount" to "Delete Account",
             "privacyPolicy" to "Privacy Policy", "termsOfService" to "Terms of Service",

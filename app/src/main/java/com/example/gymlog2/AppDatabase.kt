@@ -384,9 +384,11 @@ interface ExerciseMetadataDao {
         FeatureFlagEntity::class,
         UserProfileEntity::class,
         BiometricEntity::class,
-        FoodEntity::class
+        FoodEntity::class,
+        CardioSessionEntity::class,
+        DailyActivityEntity::class
     ],
-    version = 13,
+    version = 14,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -411,6 +413,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun userProfileDao(): UserProfileDao
     abstract fun biometricDao(): BiometricDao
     abstract fun foodDao(): FoodDao
+    abstract fun cardioSessionDao(): CardioSessionDao
+    abstract fun dailyActivityDao(): DailyActivityDao
 
     companion object {
         @Volatile private var INSTANCE: AppDatabase? = null
@@ -521,6 +525,41 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS cardio_sessions (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        userId TEXT NOT NULL,
+                        timestamp INTEGER NOT NULL DEFAULT 0,
+                        durationMs INTEGER NOT NULL DEFAULT 0,
+                        steps INTEGER NOT NULL DEFAULT 0,
+                        distanceMeters REAL NOT NULL DEFAULT 0,
+                        activeTimeMinutes INTEGER NOT NULL DEFAULT 0,
+                        caloriesBurned REAL NOT NULL DEFAULT 0,
+                        avgHeartRate INTEGER NOT NULL DEFAULT 0,
+                        routeJson TEXT NOT NULL DEFAULT '',
+                        sessionType TEXT NOT NULL DEFAULT 'walk'
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS daily_activity (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        userId TEXT NOT NULL,
+                        date INTEGER NOT NULL DEFAULT 0,
+                        steps INTEGER NOT NULL DEFAULT 0,
+                        stepsGoal INTEGER NOT NULL DEFAULT 7000,
+                        activeTimeMinutes INTEGER NOT NULL DEFAULT 0,
+                        activeTimeGoal INTEGER NOT NULL DEFAULT 90,
+                        activityCalories REAL NOT NULL DEFAULT 0,
+                        activityCaloriesGoal REAL NOT NULL DEFAULT 500,
+                        totalCaloriesBurned REAL NOT NULL DEFAULT 0,
+                        distanceMeters REAL NOT NULL DEFAULT 0
+                    )
+                """.trimIndent())
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -528,7 +567,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "kinetic.db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

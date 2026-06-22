@@ -249,8 +249,10 @@ fun MuscleGroupList(onThemeChanged: (ThemeMode) -> Unit = {}) {
     var showFriends by remember { mutableStateOf(false) }
     var showLeaderboard by remember { mutableStateOf(false) }
     var showServerDialog by remember { mutableStateOf(false) }
+    var showCardioMap by remember { mutableStateOf(false) }
+    var todayActivity by remember { mutableStateOf(DailyActivityEntity(userId = "")) }
 
-    val onDashboard = selectedGroup == null && !showCalendar && !showRecovery && !showTemplates && !showBiometricInput && !showBiometricCharts && !showFoodJournal && !showBarcodeScanner && !showAddFood && !showAiTrainer
+    val onDashboard = selectedGroup == null && !showCalendar && !showRecovery && !showTemplates && !showBiometricInput && !showBiometricCharts && !showFoodJournal && !showBarcodeScanner && !showAddFood && !showAiTrainer && !showCardioMap
 
     LaunchedEffect(badgeCheckTrigger) {
         if (badgeCheckTrigger > 0 && userId != "local_user") {
@@ -292,6 +294,8 @@ fun MuscleGroupList(onThemeChanged: (ThemeMode) -> Unit = {}) {
                 weeksSinceMeasurement = bm.getWeeksSinceLastMeasurement(userId)
                 val fm = FoodManager(db)
                 foodEntries = fm.getAll(userId)
+                val cm = CardioManager(db)
+                todayActivity = cm.getTodayActivity(userId)
             } catch (_: Exception) { }
         }
     }
@@ -635,6 +639,7 @@ fun MuscleGroupList(onThemeChanged: (ThemeMode) -> Unit = {}) {
     BackHandler {
         when {
             selectedGroup != null -> selectedGroup = null
+            showCardioMap -> { showCardioMap = false }
             showCalendar -> { showCalendar = false; currentPage = null }
             showRecovery -> { showRecovery = false; currentPage = null }
             showTemplates -> { showTemplates = false; currentPage = null }
@@ -1064,6 +1069,13 @@ fun MuscleGroupList(onThemeChanged: (ThemeMode) -> Unit = {}) {
                         onBackClick = { showFriends = false; currentPage = null },
                         onOpenLeaderboard = { showFriends = false; showLeaderboard = true }
                     )
+                } else if (showCardioMap) {
+                    CardioMapScreen(
+                        isDark = isDark,
+                        strings = strings,
+                        userId = userId,
+                        onBack = { showCardioMap = false; reloadToken++ }
+                    )
                 } else if (selectedGroup != null) {
                     ExerciseListScreen(
                         grupaMusculara = selectedGroup!!,
@@ -1255,6 +1267,15 @@ fun MuscleGroupList(onThemeChanged: (ThemeMode) -> Unit = {}) {
                                             }
                                         }
                                     }
+                                }
+
+                                item(span = { GridItemSpan(2) }) {
+                                    ActivitySummaryCard(
+                                        activity = todayActivity,
+                                        isDark = isDark,
+                                        strings = strings,
+                                        onCardioMapClick = { showCardioMap = true }
+                                    )
                                 }
 
                                 item(span = { GridItemSpan(2) }) {

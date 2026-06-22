@@ -3,11 +3,14 @@ package com.example.gymlog2
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
+import android.provider.Settings
+import androidx.compose.ui.text.style.TextAlign
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -96,6 +99,28 @@ fun CardioMapScreen(
     var locationManager by remember { mutableStateOf<LocationManager?>(null) }
     var locationListener by remember { mutableStateOf<LocationListener?>(null) }
     var currentLocation by remember { mutableStateOf<GpsPoint?>(null) }
+    var showGpsDisabledDialog by remember { mutableStateOf(false) }
+    var isGpsEnabled by remember {
+        mutableStateOf(
+            (context.getSystemService(Context.LOCATION_SERVICE) as LocationManager)
+                .isProviderEnabled(LocationManager.GPS_PROVIDER)
+        )
+    }
+
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+                isGpsEnabled = lm.isProviderEnabled(LocationManager.GPS_PROVIDER)
+                hasLocationPermission = ContextCompat.checkSelfPermission(
+                    context, Manifest.permission.ACCESS_FINE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -109,11 +134,13 @@ fun CardioMapScreen(
         }
     }
 
-    LaunchedEffect(hasLocationPermission) {
-        if (hasLocationPermission) {
+    LaunchedEffect(hasLocationPermission, isGpsEnabled) {
+        if (hasLocationPermission && isGpsEnabled) {
             fetchCurrentLocation(context) { lat, lon ->
                 currentLocation = GpsPoint(lat, lon)
             }
+        } else if (hasLocationPermission && !isGpsEnabled) {
+            showGpsDisabledDialog = true
         }
     }
 
@@ -141,6 +168,13 @@ fun CardioMapScreen(
                     Manifest.permission.ACCESS_COARSE_LOCATION
                 )
             )
+            return
+        }
+
+        val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        if (!lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            isGpsEnabled = false
+            showGpsDisabledDialog = true
             return
         }
 
@@ -206,6 +240,53 @@ fun CardioMapScreen(
         }
     }
 
+    if (showGpsDisabledDialog) {
+        AlertDialog(
+            onDismissRequest = { showGpsDisabledDialog = false },
+            containerColor = cardBg,
+            icon = {
+                Icon(
+                    Icons.Default.LocationOff,
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier.size(36.dp)
+                )
+            },
+            title = {
+                Text(
+                    "GPS " + strings.gpsTracking,
+                    color = textPrimary,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    strings.locationPermissionRequired,
+                    color = textSecondary,
+                    textAlign = TextAlign.Center
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showGpsDisabledDialog = false
+                        context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = accent)
+                ) {
+                    Icon(Icons.Default.GpsFixed, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(strings.gpsTracking)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showGpsDisabledDialog = false }) {
+                    Text(strings.back__, color = textSecondary)
+                }
+            }
+        )
+    }
+
     Scaffold(
         containerColor = surfaceBg,
         topBar = {
@@ -248,6 +329,14 @@ fun CardioMapScreen(
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(accent.copy(alpha = 0.1f))
+                                    .clickable {
+                                        permissionLauncher.launch(
+                                            arrayOf(
+                                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                                Manifest.permission.ACCESS_COARSE_LOCATION
+                                            )
+                                        )
+                                    }
                                     .padding(12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -263,6 +352,46 @@ fun CardioMapScreen(
                                     fontSize = 12.sp,
                                     color = textSecondary,
                                     modifier = Modifier.weight(1f)
+                                )
+                            }
+                            Spacer(Modifier.height(12.dp))
+                        } else if (!isGpsEnabled) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(RecoveryOrange.copy(alpha = 0.1f))
+                                    .clickable {
+                                        context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+                                    }
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.GpsOff,
+                                    contentDescription = null,
+                                    tint = RecoveryOrange,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        "GPS " + strings.gpsTracking,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = RecoveryOrange
+                                    )
+                                    Text(
+                                        strings.locationPermissionRequired,
+                                        fontSize = 11.sp,
+                                        color = textSecondary
+                                    )
+                                }
+                                Icon(
+                                    Icons.Default.ChevronRight,
+                                    contentDescription = null,
+                                    tint = RecoveryOrange,
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
                             Spacer(Modifier.height(12.dp))

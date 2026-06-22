@@ -82,6 +82,10 @@ fun CardioMapScreen(
     var currentSteps by remember { mutableStateOf(0) }
     var currentDistance by remember { mutableStateOf(0.0) }
     var currentCalories by remember { mutableStateOf(0.0) }
+    var currentSpeed by remember { mutableStateOf(0.0) }
+    var currentPace by remember { mutableStateOf(0.0) }
+    var lastLocationTime by remember { mutableStateOf(0L) }
+    var lastLocationPoint by remember { mutableStateOf<GpsPoint?>(null) }
     var routePoints by remember { mutableStateOf<List<GpsPoint>>(emptyList()) }
     var recentSessions by remember { mutableStateOf<List<CardioSessionEntity>>(emptyList()) }
     var hasLocationPermission by remember {
@@ -91,6 +95,7 @@ fun CardioMapScreen(
     }
     var locationManager by remember { mutableStateOf<LocationManager?>(null) }
     var locationListener by remember { mutableStateOf<LocationListener?>(null) }
+    var currentLocation by remember { mutableStateOf<GpsPoint?>(null) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -104,12 +109,26 @@ fun CardioMapScreen(
         }
     }
 
+    LaunchedEffect(hasLocationPermission) {
+        if (hasLocationPermission) {
+            fetchCurrentLocation(context) { lat, lon ->
+                currentLocation = GpsPoint(lat, lon)
+            }
+        }
+    }
+
     LaunchedEffect(isTracking) {
         if (isTracking) {
             while (isTracking) {
-                delay(1000)
+                delay(500)
                 elapsedMs = System.currentTimeMillis() - trackingStartTime
                 currentCalories = currentDistance / 1000.0 * 60.0
+                if (currentDistance > 0 && elapsedMs > 0) {
+                    val elapsedHours = elapsedMs / 3600000.0
+                    currentSpeed = (currentDistance / 1000.0) / elapsedHours
+                    val distKm = currentDistance / 1000.0
+                    currentPace = if (distKm > 0) (elapsedMs / 60000.0) / distKm else 0.0
+                }
             }
         }
     }
@@ -130,18 +149,39 @@ fun CardioMapScreen(
         currentSteps = 0
         currentDistance = 0.0
         currentCalories = 0.0
+        currentSpeed = 0.0
+        currentPace = 0.0
+        lastLocationTime = 0L
+        lastLocationPoint = null
         routePoints = emptyList()
         isTracking = true
 
-        startGpsTracking(context) { lat, lon ->
+        startGpsTracking(context) { lat, lon, speed ->
             val newPoint = GpsPoint(lat, lon)
+            val now = System.currentTimeMillis()
+            currentLocation = newPoint
             val currentList = routePoints
             if (currentList.isNotEmpty()) {
                 val lastPoint = currentList.last()
                 val dist = haversineDistance(lastPoint.lat, lastPoint.lon, lat, lon)
                 currentDistance += dist
                 currentSteps += (dist / 0.75).toInt()
+
+                if (lastLocationTime > 0 && lastLocationPoint != null) {
+                    val timeDiffSec = (now - lastLocationTime) / 1000.0
+                    if (timeDiffSec > 0) {
+                        val segmentDist = haversineDistance(lastLocationPoint!!.lat, lastLocationPoint!!.lon, lat, lon)
+                        val instantSpeed = (segmentDist / timeDiffSec) * 3.6
+                        currentSpeed = if (speed > 0) speed * 3.6 else instantSpeed
+                        val distKm = segmentDist / 1000.0
+                        currentPace = if (distKm > 0) (timeDiffSec / 60.0) / distKm else currentPace
+                    }
+                } else if (speed > 0) {
+                    currentSpeed = speed * 3.6
+                }
             }
+            lastLocationTime = now
+            lastLocationPoint = newPoint
             routePoints = currentList + newPoint
         }.let { (mgr, listener) ->
             locationManager = mgr
@@ -231,7 +271,7 @@ fun CardioMapScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(200.dp)
+                                .height(250.dp)
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(if (isDark) Color(0xFF1A1A1A) else Color(0xFFF0F0F0)),
                             contentAlignment = Alignment.Center
@@ -240,23 +280,67 @@ fun CardioMapScreen(
                                 GpsRouteCanvas(
                                     points = routePoints,
                                     lineColor = accent,
-                                    isDark = isDark
+                                    isDark = isDark,
+                                    currentLocation = currentLocation
                                 )
-                            } else {
+                            } else if (currentLocation != null) {
+                                CurrentLocationCanvas(
+                                    location = currentLocation!!,
+                                    isTracking = isTracking,
+                                    isDark = isDark,
+                                    accent = accent
+                                )
+                            } else if (!hasLocationPermission) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Icon(
-                                        Icons.Default.Map,
+                                        Icons.Default.LocationOff,
                                         contentDescription = null,
                                         tint = textSecondary.copy(alpha = 0.5f),
                                         modifier = Modifier.size(48.dp)
                                     )
                                     Spacer(Modifier.height(8.dp))
                                     Text(
-                                        if (isTracking) strings.gpsTracking else strings.startCardio,
+                                        strings.locationPermissionRequired,
                                         fontSize = 13.sp,
                                         color = textSecondary
                                     )
                                 }
+                            } else {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(32.dp),
+                                        color = accent,
+                                        strokeWidth = 3.dp
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        strings.gpsTracking,
+                                        fontSize = 13.sp,
+                                        color = textSecondary
+                                    )
+                                }
+                            }
+                        }
+
+                        if (currentLocation != null) {
+                            Spacer(Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.MyLocation,
+                                    contentDescription = null,
+                                    tint = Color(0xFF2196F3),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    String.format(Locale.US, "%.5f, %.5f", currentLocation!!.lat, currentLocation!!.lon),
+                                    fontSize = 12.sp,
+                                    color = textSecondary
+                                )
                             }
                         }
 
@@ -288,6 +372,26 @@ fun CardioMapScreen(
                                 label = strings.cal,
                                 value = "${currentCalories.toInt()}",
                                 textPrimary = textPrimary,
+                                textSecondary = textSecondary
+                            )
+                        }
+
+                        Spacer(Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            TrackingStat(
+                                label = "Speed (km/h)",
+                                value = String.format(Locale.getDefault(), "%.1f", currentSpeed),
+                                textPrimary = if (currentSpeed > 0) Color(0xFF4CAF50) else textPrimary,
+                                textSecondary = textSecondary
+                            )
+                            TrackingStat(
+                                label = strings.pace + " (min/km)",
+                                value = formatPace(currentPace),
+                                textPrimary = if (currentPace > 0) Color(0xFF2196F3) else textPrimary,
                                 textSecondary = textSecondary
                             )
                         }
@@ -505,23 +609,78 @@ private fun CardioSessionItem(
 }
 
 @Composable
+fun CurrentLocationCanvas(
+    location: GpsPoint,
+    isTracking: Boolean,
+    isDark: Boolean,
+    accent: Color
+) {
+    val pulseAnim by animateFloatAsState(
+        targetValue = if (isTracking) 1f else 0.6f,
+        animationSpec = tween(1000),
+        label = "pulse"
+    )
+
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val centerX = size.width / 2
+        val centerY = size.height / 2
+
+        drawCircle(
+            color = Color(0xFF2196F3).copy(alpha = 0.08f),
+            radius = 60f * pulseAnim,
+            center = Offset(centerX, centerY)
+        )
+        drawCircle(
+            color = Color(0xFF2196F3).copy(alpha = 0.15f),
+            radius = 35f * pulseAnim,
+            center = Offset(centerX, centerY)
+        )
+        drawCircle(
+            color = Color.White,
+            radius = 12f,
+            center = Offset(centerX, centerY)
+        )
+        drawCircle(
+            color = Color(0xFF2196F3),
+            radius = 9f,
+            center = Offset(centerX, centerY)
+        )
+
+        drawCircle(
+            color = if (isDark) Color(0xFF333333) else Color(0xFFDDDDDD),
+            radius = 4f,
+            center = Offset(centerX, centerY + 40f)
+        )
+    }
+}
+
+@Composable
 fun GpsRouteCanvas(
     points: List<GpsPoint>,
     lineColor: Color,
-    isDark: Boolean
+    isDark: Boolean,
+    currentLocation: GpsPoint? = null
 ) {
+    val pulseAnim by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = tween(800),
+        label = "routePulse"
+    )
+
     Canvas(modifier = Modifier.fillMaxSize()) {
         if (points.size < 2) return@Canvas
 
-        val minLat = points.minOf { it.lat }
-        val maxLat = points.maxOf { it.lat }
-        val minLon = points.minOf { it.lon }
-        val maxLon = points.maxOf { it.lon }
+        val allPoints = if (currentLocation != null) points + currentLocation else points
+
+        val minLat = allPoints.minOf { it.lat }
+        val maxLat = allPoints.maxOf { it.lat }
+        val minLon = allPoints.minOf { it.lon }
+        val maxLon = allPoints.maxOf { it.lon }
 
         val latRange = (maxLat - minLat).coerceAtLeast(0.0001)
         val lonRange = (maxLon - minLon).coerceAtLeast(0.0001)
 
-        val padding = 16f
+        val padding = 24f
         val drawWidth = size.width - padding * 2
         val drawHeight = size.height - padding * 2
 
@@ -535,18 +694,38 @@ fun GpsRouteCanvas(
         drawPath(
             path = path,
             color = lineColor,
-            style = Stroke(width = 3f, cap = StrokeCap.Round)
+            style = Stroke(width = 4f, cap = StrokeCap.Round)
         )
 
         val firstPoint = points.first()
         val startX = padding + ((firstPoint.lon - minLon) / lonRange * drawWidth).toFloat()
         val startY = padding + ((maxLat - firstPoint.lat) / latRange * drawHeight).toFloat()
-        drawCircle(Color(0xFF4CAF50), radius = 5f, center = Offset(startX, startY))
+        drawCircle(Color(0xFF4CAF50), radius = 7f, center = Offset(startX, startY))
 
-        val lastPoint = points.last()
-        val endX = padding + ((lastPoint.lon - minLon) / lonRange * drawWidth).toFloat()
-        val endY = padding + ((maxLat - lastPoint.lat) / latRange * drawHeight).toFloat()
-        drawCircle(lineColor, radius = 5f, center = Offset(endX, endY))
+        if (currentLocation != null) {
+            val curX = padding + ((currentLocation.lon - minLon) / lonRange * drawWidth).toFloat()
+            val curY = padding + ((maxLat - currentLocation.lat) / latRange * drawHeight).toFloat()
+            drawCircle(
+                color = Color(0xFF2196F3).copy(alpha = 0.15f),
+                radius = 25f * pulseAnim,
+                center = Offset(curX, curY)
+            )
+            drawCircle(
+                color = Color.White,
+                radius = 9f,
+                center = Offset(curX, curY)
+            )
+            drawCircle(
+                color = Color(0xFF2196F3),
+                radius = 7f,
+                center = Offset(curX, curY)
+            )
+        } else {
+            val lastPoint = points.last()
+            val endX = padding + ((lastPoint.lon - minLon) / lonRange * drawWidth).toFloat()
+            val endY = padding + ((maxLat - lastPoint.lat) / latRange * drawHeight).toFloat()
+            drawCircle(lineColor, radius = 7f, center = Offset(endX, endY))
+        }
     }
 }
 
@@ -560,6 +739,14 @@ private fun formatDuration(ms: Long): String {
     } else {
         String.format(Locale.getDefault(), "%d:%02d", minutes, seconds)
     }
+}
+
+private fun formatPace(paceMinPerKm: Double): String {
+    if (paceMinPerKm <= 0 || paceMinPerKm > 99) return "0:00"
+    val totalSeconds = (paceMinPerKm * 60).toInt()
+    val mins = totalSeconds / 60
+    val secs = totalSeconds % 60
+    return String.format(Locale.getDefault(), "%d:%02d", mins, secs)
 }
 
 private fun haversineDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
@@ -576,12 +763,13 @@ private fun haversineDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Do
 @SuppressLint("MissingPermission")
 private fun startGpsTracking(
     context: Context,
-    onLocationUpdate: (Double, Double) -> Unit
+    onLocationUpdate: (Double, Double, Float) -> Unit
 ): Pair<LocationManager, LocationListener> {
     val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
     val listener = object : LocationListener {
         override fun onLocationChanged(location: Location) {
-            onLocationUpdate(location.latitude, location.longitude)
+            val speed = if (location.hasSpeed()) location.speed else 0f
+            onLocationUpdate(location.latitude, location.longitude, speed)
         }
         override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
         override fun onProviderEnabled(provider: String) {}
@@ -594,6 +782,39 @@ private fun startGpsTracking(
         else -> LocationManager.GPS_PROVIDER
     }
 
-    lm.requestLocationUpdates(provider, 2000L, 5f, listener)
+    lm.requestLocationUpdates(provider, 1000L, 2f, listener)
     return Pair(lm, listener)
+}
+
+@SuppressLint("MissingPermission")
+private fun fetchCurrentLocation(
+    context: Context,
+    onLocation: (Double, Double) -> Unit
+) {
+    val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+
+    val provider = when {
+        lm.isProviderEnabled(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
+        lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER) -> LocationManager.NETWORK_PROVIDER
+        else -> LocationManager.GPS_PROVIDER
+    }
+
+    val lastKnown = lm.getLastKnownLocation(provider)
+        ?: lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+        ?: lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+
+    if (lastKnown != null) {
+        onLocation(lastKnown.latitude, lastKnown.longitude)
+    }
+
+    val listener = object : LocationListener {
+        override fun onLocationChanged(location: Location) {
+            onLocation(location.latitude, location.longitude)
+            lm.removeUpdates(this)
+        }
+        override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
+        override fun onProviderEnabled(provider: String) {}
+        override fun onProviderDisabled(provider: String) {}
+    }
+    lm.requestLocationUpdates(provider, 0L, 0f, listener)
 }

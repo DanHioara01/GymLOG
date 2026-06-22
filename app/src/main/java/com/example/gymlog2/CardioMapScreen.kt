@@ -82,6 +82,10 @@ fun CardioMapScreen(
     var currentSteps by remember { mutableStateOf(0) }
     var currentDistance by remember { mutableStateOf(0.0) }
     var currentCalories by remember { mutableStateOf(0.0) }
+    var currentSpeed by remember { mutableStateOf(0.0) }
+    var currentPace by remember { mutableStateOf(0.0) }
+    var lastLocationTime by remember { mutableStateOf(0L) }
+    var lastLocationPoint by remember { mutableStateOf<GpsPoint?>(null) }
     var routePoints by remember { mutableStateOf<List<GpsPoint>>(emptyList()) }
     var recentSessions by remember { mutableStateOf<List<CardioSessionEntity>>(emptyList()) }
     var hasLocationPermission by remember {
@@ -116,9 +120,15 @@ fun CardioMapScreen(
     LaunchedEffect(isTracking) {
         if (isTracking) {
             while (isTracking) {
-                delay(1000)
+                delay(500)
                 elapsedMs = System.currentTimeMillis() - trackingStartTime
                 currentCalories = currentDistance / 1000.0 * 60.0
+                if (currentDistance > 0 && elapsedMs > 0) {
+                    val elapsedHours = elapsedMs / 3600000.0
+                    currentSpeed = (currentDistance / 1000.0) / elapsedHours
+                    val distKm = currentDistance / 1000.0
+                    currentPace = if (distKm > 0) (elapsedMs / 60000.0) / distKm else 0.0
+                }
             }
         }
     }
@@ -139,11 +149,16 @@ fun CardioMapScreen(
         currentSteps = 0
         currentDistance = 0.0
         currentCalories = 0.0
+        currentSpeed = 0.0
+        currentPace = 0.0
+        lastLocationTime = 0L
+        lastLocationPoint = null
         routePoints = emptyList()
         isTracking = true
 
-        startGpsTracking(context) { lat, lon ->
+        startGpsTracking(context) { lat, lon, speed ->
             val newPoint = GpsPoint(lat, lon)
+            val now = System.currentTimeMillis()
             currentLocation = newPoint
             val currentList = routePoints
             if (currentList.isNotEmpty()) {
@@ -151,7 +166,22 @@ fun CardioMapScreen(
                 val dist = haversineDistance(lastPoint.lat, lastPoint.lon, lat, lon)
                 currentDistance += dist
                 currentSteps += (dist / 0.75).toInt()
+
+                if (lastLocationTime > 0 && lastLocationPoint != null) {
+                    val timeDiffSec = (now - lastLocationTime) / 1000.0
+                    if (timeDiffSec > 0) {
+                        val segmentDist = haversineDistance(lastLocationPoint!!.lat, lastLocationPoint!!.lon, lat, lon)
+                        val instantSpeed = (segmentDist / timeDiffSec) * 3.6
+                        currentSpeed = if (speed > 0) speed * 3.6 else instantSpeed
+                        val distKm = segmentDist / 1000.0
+                        currentPace = if (distKm > 0) (timeDiffSec / 60.0) / distKm else currentPace
+                    }
+                } else if (speed > 0) {
+                    currentSpeed = speed * 3.6
+                }
             }
+            lastLocationTime = now
+            lastLocationPoint = newPoint
             routePoints = currentList + newPoint
         }.let { (mgr, listener) ->
             locationManager = mgr
@@ -342,6 +372,26 @@ fun CardioMapScreen(
                                 label = strings.cal,
                                 value = "${currentCalories.toInt()}",
                                 textPrimary = textPrimary,
+                                textSecondary = textSecondary
+                            )
+                        }
+
+                        Spacer(Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            TrackingStat(
+                                label = "Speed (km/h)",
+                                value = String.format(Locale.getDefault(), "%.1f", currentSpeed),
+                                textPrimary = if (currentSpeed > 0) Color(0xFF4CAF50) else textPrimary,
+                                textSecondary = textSecondary
+                            )
+                            TrackingStat(
+                                label = strings.pace + " (min/km)",
+                                value = formatPace(currentPace),
+                                textPrimary = if (currentPace > 0) Color(0xFF2196F3) else textPrimary,
                                 textSecondary = textSecondary
                             )
                         }
@@ -691,6 +741,14 @@ private fun formatDuration(ms: Long): String {
     }
 }
 
+private fun formatPace(paceMinPerKm: Double): String {
+    if (paceMinPerKm <= 0 || paceMinPerKm > 99) return "0:00"
+    val totalSeconds = (paceMinPerKm * 60).toInt()
+    val mins = totalSeconds / 60
+    val secs = totalSeconds % 60
+    return String.format(Locale.getDefault(), "%d:%02d", mins, secs)
+}
+
 private fun haversineDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
     val r = 6371000.0
     val dLat = Math.toRadians(lat2 - lat1)
@@ -705,12 +763,13 @@ private fun haversineDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Do
 @SuppressLint("MissingPermission")
 private fun startGpsTracking(
     context: Context,
-    onLocationUpdate: (Double, Double) -> Unit
+    onLocationUpdate: (Double, Double, Float) -> Unit
 ): Pair<LocationManager, LocationListener> {
     val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
     val listener = object : LocationListener {
         override fun onLocationChanged(location: Location) {
-            onLocationUpdate(location.latitude, location.longitude)
+            val speed = if (location.hasSpeed()) location.speed else 0f
+            onLocationUpdate(location.latitude, location.longitude, speed)
         }
         override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
         override fun onProviderEnabled(provider: String) {}
@@ -723,7 +782,7 @@ private fun startGpsTracking(
         else -> LocationManager.GPS_PROVIDER
     }
 
-    lm.requestLocationUpdates(provider, 2000L, 5f, listener)
+    lm.requestLocationUpdates(provider, 1000L, 2f, listener)
     return Pair(lm, listener)
 }
 
